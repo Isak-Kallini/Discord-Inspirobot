@@ -19,7 +19,13 @@ public class DailyQuote {
             time.add(Calendar.DAY_OF_MONTH, 1);
         }
         Guild guild = jda.getGuildById(Long.parseLong(in[2]));
+        if(guild == null){
+            return null;
+        }
         TextChannel channel = guild.getTextChannelById(in[3]);
+        if(channel == null){
+            return null;
+        }
         return new DailyQuote(time, guild, channel);
     }
 

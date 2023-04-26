@@ -1,6 +1,8 @@
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -15,9 +17,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 
@@ -28,11 +28,18 @@ public class Main extends ListenerAdapter {
     private static List<DailyQuote> dailyQuotes = new ArrayList<>();
     final Path dailyQuotePath = Paths.get("dailyTime.txt");
 
+    static final Calendar startTime = new GregorianCalendar();
+
+    private static JDA jda;
+    private static StatCounter stats;
+
     public static void main(String[] args) throws IOException, InterruptedException {
         final String token = Files.readString(Paths.get("token.txt")).trim();
 
-        final JDA jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class))
+        stats = new StatCounter();
+        jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class))
                 .addEventListeners(new Main())
+                .setActivity(Activity.playing(stats.getNquotes() + " Quotes generated!"))
                 .build();
 
         CommandListUpdateAction commands = jda.updateCommands();
@@ -48,24 +55,27 @@ public class Main extends ListenerAdapter {
                         .addOptions(new OptionData(INTEGER, "time", "Time for the message to be sent everyday, starting in x minutes"))
 
         );
+        commands.addCommands(
+                Commands.slash("stats", "Some stats about the bot")
+        );
 
         commands.queue();
         jda.awaitReady();
         initialize(jda);
-
-
-
     }
 
     public static void initialize(JDA jda){
+        ErrorLogger.deleteOldLogs();
         try {
             List<String> in = (Files.readAllLines(Paths.get("dailyTime.txt")));
             for(String e: in){
-                dailyQuotes.add(DailyQuote.fromLogFormat(e, jda));
+                DailyQuote quote = DailyQuote.fromLogFormat(e, jda);
+                if(quote != null)
+                    dailyQuotes.add(quote);
             }
             dailyQuotes.forEach(DailyQuote::startSchedule);
         }catch(Exception e){
-            e.printStackTrace();
+            ErrorLogger.log(e);
         }
     }
 
@@ -76,6 +86,9 @@ public class Main extends ListenerAdapter {
         switch (event.getName()) {
             case "quote":
                 sendQuote(event);
+                return;
+            case "stats":
+                stats(event);
                 return;
             case "dailyquote":
                 dailyQuote(event);
@@ -91,6 +104,22 @@ public class Main extends ListenerAdapter {
                 .setColor(new Color(0, 102, 0)).build();
 
         event.replyEmbeds(embed).queue();
+        stats.count();
+    }
+
+    public static void updatePresence(){
+        jda.getPresence().setActivity(Activity.playing(stats.getNquotes() + " Quotes generated!"));
+    }
+
+    public static void stats(SlashCommandInteractionEvent event){
+        List<Guild> guilds = jda.getGuilds();
+
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("Stats")
+                .setDescription("Number of servers: **" + guilds.size() + "**\n" +
+                        "Number of quotes sent: **" + stats.getNquotes() + "**")
+                .setColor(new Color(0, 102, 0)).build();
+        event.replyEmbeds(embed).queue();
     }
 
     public static void sendQuoteNoReply(MessageChannel channel){
@@ -102,6 +131,7 @@ public class Main extends ListenerAdapter {
                 .setColor(new Color(0, 102, 0)).build();
 
         channel.sendMessageEmbeds(embed).queue();
+        stats.count();
     }
 
 
@@ -115,14 +145,7 @@ public class Main extends ListenerAdapter {
             String pictureUrl = new BufferedReader(new InputStreamReader(input)).readLine();
             return pictureUrl;
         } catch (IOException e) {
-            try {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                Files.write(Paths.get("log.txt"), (sw.toString()).getBytes());
-            }catch(IOException f){
-                e.printStackTrace();
-            }
+            ErrorLogger.log(e);
             e.printStackTrace();
             return "Couldn't generate a picture.";
         }
@@ -146,15 +169,16 @@ public class Main extends ListenerAdapter {
 
                 say(event, "Inspirobot will send a new quote starting in " + timeIn + " minutes and then every 24 hours.");
 
-            } else if (isActiveInput && tempList.size() == 1) {
-                DailyQuote existingQuote = tempList.get(0);
-                existingQuote.stop();
-                dailyQuotes.remove(existingQuote);
+            } else if (isActiveInput && tempList.size() >= 1) {
+                for (DailyQuote existing : tempList){
+                    existing.stop();
+                    dailyQuotes.remove(existing);
+                }
 
                 try {
                     Files.delete(dailyQuotePath);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    ErrorLogger.log(e);
                 }
                 dailyQuotes.forEach(e -> e.store(dailyQuotePath));
 
@@ -164,15 +188,16 @@ public class Main extends ListenerAdapter {
                 dailyQuotes.add(dailyQuote);
                 say(event, "Removed old time. Inspirobot will now send a new quote starting in " + timeIn + " minutes and then every 24 hours.");
 
-            } else if (!isActiveInput && tempList.size() == 1) {
-                DailyQuote existingQuote = tempList.get(0);
-                existingQuote.stop();
-                dailyQuotes.remove(existingQuote);
+            } else if (!isActiveInput && tempList.size() >= 1) {
+                for (DailyQuote existing : tempList){
+                    existing.stop();
+                    dailyQuotes.remove(existing);
+                }
 
                 try {
                     Files.delete(dailyQuotePath);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    ErrorLogger.log(e);
                 }
                 dailyQuotes.forEach(e -> e.store(dailyQuotePath));
                 say(event, "Inspirobot will no longer send a daily quote.");
