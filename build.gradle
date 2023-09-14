@@ -1,8 +1,10 @@
 plugins {
     id 'java'
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 apply plugin: 'application'
+
 
 mainClassName = 'Main'
 
@@ -11,8 +13,10 @@ version '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
     maven { url 'https://jitpack.io' }
 }
+
 sourceSets {
     main {
         java {
@@ -25,8 +29,12 @@ sourceSets {
 }
 
 
+
+
 dependencies {
     implementation 'com.github.top-gg:java-sdk:2.1.2'
     // https://mvnrepository.com/artifact/net.dv8tion/JDA
     implementation 'net.dv8tion:JDA:5.0.0-beta.13'
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
 }

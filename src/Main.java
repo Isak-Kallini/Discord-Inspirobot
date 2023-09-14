@@ -35,35 +35,44 @@ public class Main extends ListenerAdapter {
     private static StatCounter stats;
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        final String token = Files.readString(Paths.get("token.txt")).trim();
+        try {
+            final String token = Files.readString(Paths.get("token.txt")).trim();
 
-        stats = new StatCounter();
-        jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class))
-                .addEventListeners(new Main())
-                .setActivity(Activity.playing(stats.getNquotes() + " Quotes generated!"))
-                .build();
+            stats = new StatCounter();
+            jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class))
+                    .addEventListeners(new Main())
+                    .setActivity(Activity.playing(stats.getNquotes() + " Quotes generated!"))
+                    .build();
 
-        CommandListUpdateAction commands = jda.updateCommands();
+            CommandListUpdateAction commands = jda.updateCommands();
 
 
-        commands.addCommands(
-                Commands.slash("quote", "Generate a quote.")
-        );
-        commands.addCommands(
-                Commands.slash("dailyquote", "Toggle if the bot should send daily quotes")
-                        .addOptions(new OptionData(BOOLEAN, "status", "Should the bot send a quote every day?")
-                            .setRequired(true))
-                        .addOptions(new OptionData(INTEGER, "time", "Time for the message to be sent everyday, starting in x minutes"))
+            commands.addCommands(
+                    Commands.slash("quote", "Generate a quote.")
+            );
+            commands.addCommands(
+                    Commands.slash("dailyquote", "Toggle if the bot should send daily quotes")
+                            .addOptions(new OptionData(BOOLEAN, "status", "Should the bot send a quote every day?")
+                                    .setRequired(true))
+                            .addOptions(new OptionData(INTEGER, "time", "Time for the message to be sent everyday, starting in x minutes"))
 
-        );
-        commands.addCommands(
-                Commands.slash("stats", "Some stats about the bot")
-        );
+            );
+            commands.addCommands(
+                    Commands.slash("stats", "Some stats about the bot")
+            );
 
-        commands.queue();
-        jda.awaitReady();
-        initialize(jda);
-        setTopGGCount();
+            commands.queue();
+            jda.awaitReady();
+            initialize(jda);
+
+            try {
+                setTopGGCount();
+            } catch (Exception e) {
+                ErrorLogger.log(e);
+            }
+        }catch (Exception e){
+            ErrorLogger.log(e);
+        }
     }
 
     public static void setTopGGCount() throws IOException {
