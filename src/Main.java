@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
+import org.discordbots.api.client.DiscordBotListAPI;
 
 import java.awt.*;
 import java.io.*;
@@ -62,6 +63,18 @@ public class Main extends ListenerAdapter {
         commands.queue();
         jda.awaitReady();
         initialize(jda);
+        setTopGGCount();
+    }
+
+    public static void setTopGGCount() throws IOException {
+        List<Guild> guilds = jda.getGuilds();
+        String token = Files.readString(Paths.get("top-gg-token.txt")).trim();
+        DiscordBotListAPI api = new DiscordBotListAPI.Builder()
+                .token(token)
+                .botId("430803590106447892")
+                .build();
+
+        api.setStats(guilds.size());
     }
 
     public static void initialize(JDA jda){
@@ -112,6 +125,11 @@ public class Main extends ListenerAdapter {
     }
 
     public static void stats(SlashCommandInteractionEvent event){
+        try {
+            setTopGGCount();
+        }catch (Exception e){
+            ErrorLogger.log(e);
+        }
         List<Guild> guilds = jda.getGuilds();
 
         MessageEmbed embed = new EmbedBuilder()

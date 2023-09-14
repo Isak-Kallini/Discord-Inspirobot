@@ -2,10 +2,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import java.util.*;
 
 public class ErrorLogger {
     private static final Path filePath = FileSystems.getDefault().getPath("log/log" + timeToLogFormat(new GregorianCalendar()) + ".txt");
@@ -15,7 +12,7 @@ public class ErrorLogger {
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
         try {
-            Files.write(filePath, Arrays.asList(timeToLogFormat(new GregorianCalendar()) + " " + sw.toString()),
+            Files.write(filePath, List.of(timeToLogFormat(new GregorianCalendar()) + " " + sw.toString()),
                     java.nio.charset.StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.APPEND, StandardOpenOption.CREATE);
             e.printStackTrace();
         } catch (IOException ex) {
@@ -34,7 +31,7 @@ public class ErrorLogger {
 
     public static void deleteOldLogs(){
         try {
-            DirectoryStream stream = Files.newDirectoryStream(FileSystems.getDefault().getPath("log"));
+            DirectoryStream<Path> stream = Files.newDirectoryStream(FileSystems.getDefault().getPath("log"));
             ArrayList<String> logFiles = new ArrayList<>();
             stream.forEach(e -> {
                 if(e.toString().contains("log\\log")){
